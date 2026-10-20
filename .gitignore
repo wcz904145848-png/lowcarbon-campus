@@ -1,0 +1,48 @@
+# ---------- Unity ----------
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ---------- IDE ----------
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# ---------- 构建产物 ----------
+*.apk
+*.aab
+*.unitypackage
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 临时 ----------
+sysinfo.txt
+crashlytics-build.properties
+Collab/**/~$*
+
+# ---------- 第三方克隆（不是本项目内容）----------
+QQ农场/
+
+# ---------- 调试截图（体积大，不入库）----------
+Collab/_probe/
+
+# ---------- Python ----------
+__pycache__/
+*.pyc

@@ -1,0 +1,387 @@
+{
+  "contractVersion": "0.2.0",
+  "updated": "2026-10-18",
+  "status": "spine-frozen, dual-account-frozen, content-provisional",
+  "changelog": [
+    {
+      "version": "0.2.0",
+      "date": "2026-10-18",
+      "change": "按《游戏设想》《玩法与介绍》重构：引入双账户（真实减排 / 游戏成长）与排放因子核算模型；carbonSaving 由常数改为计算得出；turn 语义改为 day；新增 FactorDef / PlantDef 表",
+      "breaking": true
+    },
+    {
+      "version": "0.1.1",
+      "date": "2026-10-18",
+      "change": "ui.resolution 标为 pending-platform：参考图为手机竖屏，与原先的横屏 1920x1080 假设冲突，待平台确认",
+      "breaking": false
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-10-18",
+      "change": "初始冻结：场景 / 事件 / 存档 / 命名 / 数据表形状",
+      "breaking": true
+    }
+  ],
+  "owner": {
+    "code": "DSH",
+    "design": "ChatGPT",
+    "decider": "user"
+  },
+  "purpose": "唯一接口真相。字段名、场景名、事件名只认这里。设计只能填表，工程只读表。",
+  "meta": {
+    "frozenSections": ["units", "accounts", "naming", "scenes", "events", "save", "rules"],
+    "provisionalSections": ["tables.PlantDef", "ui"],
+    "note": "双账户与核算模型已冻结——它们是这个项目的核心主张，不是可选项。PlantDef 形状待定，ui 待平台确认。"
+  },
+
+  "units": {
+    "carbon": {
+      "type": "float",
+      "unit": "kgCO2e",
+      "convention": "正数 = 减排，负数 = 排放；全程不取绝对值"
+    },
+    "growth": {
+      "type": "int",
+      "unit": "成长点"
+    },
+    "leaf": {
+      "type": "int",
+      "unit": "片"
+    },
+    "flower": {
+      "type": "int",
+      "unit": "朵"
+    },
+    "distance": {
+      "type": "float",
+      "unit": "km"
+    },
+    "time": {
+      "type": "float",
+      "unit": "s"
+    },
+    "money": {
+      "type": "int",
+      "unit": "元"
+    },
+    "ratio": {
+      "type": "float",
+      "range": "0..1"
+    },
+    "difficulty": {
+      "type": "int",
+      "range": "1..5"
+    }
+  },
+
+  "accounts": {
+    "why": "《游戏设想》的核心主张：碳数据与游戏资源物理隔离。所有社交/交易/加速只写游戏侧，碳侧只接受行为记录的单向写入。这一条不是设计风格，是可以在代码里被违反的硬约束。",
+    "carbon": {
+      "name": "真实减排账户",
+      "fields": { "carbonTotal": "float" },
+      "writableBy": ["behaviorRecord"],
+      "readOnlyAfterWrite": true,
+      "forbiddenWriters": ["social", "shop", "blindBox", "speedUp", "gift"],
+      "rule": "只读累计。任何非行为记录的操作写入此账户即为严重 bug。"
+    },
+    "game": {
+      "name": "游戏成长账户",
+      "fields": {
+        "growthPoints": "int",
+        "leaves": "int",
+        "flowers": "int"
+      },
+      "writableBy": ["behaviorRecord", "social", "shop", "blindBox", "speedUp", "gift"],
+      "rule": "可流转、可消耗、可赠送。禁止由游戏侧反算或改写碳数据。"
+    },
+    "conversion": {
+      "direction": "carbon -> game，单向",
+      "rule": "growthPoints += floor(carbonDelta / 0.1)",
+      "source": "《玩法与介绍》第 7 页：每 0.1 kg CO₂e = 1 成长点",
+      "forbidden": "禁止 game -> carbon 的任何换算"
+    },
+    "declaration": {
+      "mustDisplay": "虚拟树木不等于实际固碳；减排量与成长值分别记录、分别展示",
+      "uiRule": "两个账户的数字必须在视觉上分开呈现，永不求和、永不同色同权重"
+    }
+  },
+
+  "naming": {
+    "ids": "lowerCamelCase，英文，禁止拼音，全局唯一",
+    "scenes": "PascalCase，值见 scenes",
+    "events": "PascalCase 且以 On 开头，值见 events",
+    "namespaceRoot": "LowCarbon",
+    "scripts": "Assets/_Project/Scripts/{Core,Data,Gameplay,UI,Editor}",
+    "prefabPrefixes": {
+      "普通预制体": "PF_",
+      "UI 预制体": "UI_",
+      "ScriptableObject 资产": "SO_",
+      "材质": "M_",
+      "贴图": "S_",
+      "音频": "A_"
+    },
+    "dataFiles": "Assets/GameData/*.json（Unity 原生按 TextAsset 导入，不要改扩展名）"
+  },
+
+  "scenes": {
+    "Boot": { "index": 0, "purpose": "初始化、读设置、写存档，随后跳转" },
+    "MainMenu": { "index": 1, "purpose": "开始 / 继续 / 设置" },
+    "Game": { "index": 2, "purpose": "全部玩法都在这里，切换场景不换场景文件" },
+    "Result": { "index": 3, "purpose": "结算、减排汇总、重玩" }
+  },
+  "sceneRules": {
+    "singleGameplayScene": true,
+    "reason": "关卡切换只换数据不换场景，加载成本为零，演示不会黑屏",
+    "noDynamicSceneLoad": "除 Boot 之外不得在运行时加载场景"
+  },
+
+  "events": {
+    "OnGameStart": {
+      "payload": {},
+      "when": "进入 Game 场景且数据加载完成"
+    },
+    "OnDayAdvanced": {
+      "payload": { "day": "int", "dayLimit": "int" },
+      "when": "一天结束，进入下一天"
+    },
+    "OnRecordCommitted": {
+      "payload": {
+        "actionId": "string",
+        "quantity": "float",
+        "baselineFactorId": "string",
+        "actualFactorId": "string",
+        "carbonDelta": "float",
+        "growthDelta": "int"
+      },
+      "when": "一条行为记录被接受并完成核算；这是「计算情景」反馈面板的唯一数据源"
+    },
+    "OnRecordRejected": {
+      "payload": { "actionId": "string", "reason": "duplicate|invalidQuantity|locked" },
+      "when": "记录被拒绝；必须告知玩家原因，不许静默失败"
+    },
+    "OnCarbonAccountChanged": {
+      "payload": { "carbonTotal": "float", "goalCarbon": "float", "progress": "float" },
+      "when": "碳账户变化。只有它能让碳仪表动"
+    },
+    "OnGameAccountChanged": {
+      "payload": { "growthPoints": "int", "leaves": "int", "flowers": "int" },
+      "when": "游戏账户变化。与碳事件分开派发，禁止合并"
+    },
+    "OnPlantStageChanged": {
+      "payload": { "plantId": "string", "stageIndex": "int" },
+      "when": "植物跨过成长阶段"
+    },
+    "OnGoalReached": {
+      "payload": { "carbonTotal": "float", "dayUsed": "int" },
+      "when": "达标，触发结算"
+    },
+    "OnGameOver": {
+      "payload": { "reason": "dayLimitReached|aborted", "carbonTotal": "float" },
+      "when": "未达标结束"
+    }
+  },
+  "eventRules": {
+    "delivery": "静态事件总线，订阅/退订必须在 OnEnable/OnDisable 成对出现",
+    "uiNeverReadsGameplay": "UI 只订阅事件、不直接拿 Gameplay 单例，保证 HUD 可独立测试",
+    "accountsNeverMerge": "碳事件与游戏事件绝不合并成同一个事件；合并即失去双账户隔离"
+  },
+
+  "save": {
+    "format": "json",
+    "path": "Application.persistentDataPath/save.json",
+    "fields": {
+      "version": "int",
+      "day": "int",
+      "carbonAccount": { "carbonTotal": "float" },
+      "gameAccount": {
+        "growthPoints": "int",
+        "leaves": "int",
+        "flowers": "int"
+      },
+      "plants": {
+        "ownedPlantIds": "string[]",
+        "growthByPlantId": "object<plantId, int>"
+      },
+      "recordsThisDay": "string[]",
+      "completedActionIds": "string[]",
+      "settings": {
+        "lang": "zh|en",
+        "volume": "float",
+        "reducedMotion": "bool"
+      }
+    },
+    "rules": "字段只增不改；version 不匹配时丢弃存档而不是崩溃；两个账户在存档里也必须是两个并列对象，不许拍平"
+  },
+
+  "tables": {
+    "FactorDef": {
+      "file": "Assets/GameData/factors.json",
+      "root": "array",
+      "status": "frozen",
+      "item": {
+        "id": "string",
+        "displayName": "string",
+        "unitKind": "perKm|perUnit|perHour",
+        "factorKgPerUnit": "float",
+        "source": "string",
+        "isDemoAssumption": "bool"
+      },
+      "required": ["id", "displayName", "unitKind", "factorKgPerUnit", "isDemoAssumption"],
+      "example": {
+        "id": "car",
+        "displayName": "乘汽车",
+        "unitKind": "perKm",
+        "factorKgPerUnit": 0.2,
+        "source": "演示假设，非正式校园核算系数（见《玩法与介绍》P6）",
+        "isDemoAssumption": true
+      },
+      "rule": "所有 factorKgPerUnit 必须能追溯到 source；isDemoAssumption=true 的必须在 UI 上标注「演示假设」"
+    },
+
+    "ActionDef": {
+      "file": "Assets/GameData/actions.json",
+      "root": "array",
+      "status": "frozen",
+      "item": {
+        "id": "string",
+        "title": "string",
+        "desc": "string",
+        "category": "transport|food|energy|waste|consumption",
+        "quantityKind": "distanceKm|count|hours",
+        "defaultQuantity": "float",
+        "baselineFactorId": "string",
+        "actualFactorId": "string",
+        "cost": "int",
+        "difficulty": "int",
+        "unlockAt": "int",
+        "icon": "string"
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "quantityKind",
+        "defaultQuantity",
+        "baselineFactorId",
+        "actualFactorId"
+      ],
+      "computed": {
+        "carbonDelta": "defaultQuantity * (factor[baselineFactorId].factorKgPerUnit - factor[actualFactorId].factorKgPerUnit)",
+        "growthDelta": "floor(carbonDelta / 0.1)",
+        "note": "行动表里不存减排量。减排量永远是算出来的——这是「可验算」的前提"
+      },
+      "example": {
+        "id": "walkToClass",
+        "title": "步行去上课",
+        "desc": "原本 2 公里坐车，改用走的。一次往返约减排 0.4 kg CO₂e。",
+        "category": "transport",
+        "quantityKind": "distanceKm",
+        "defaultQuantity": 2.0,
+        "baselineFactorId": "car",
+        "actualFactorId": "walk",
+        "cost": 0,
+        "difficulty": 1,
+        "unlockAt": 0,
+        "icon": "S_icon_walk"
+      }
+    },
+
+    "LevelDef": {
+      "file": "Assets/GameData/levels.json",
+      "root": "array",
+      "status": "provisional",
+      "item": {
+        "id": "string",
+        "title": "string",
+        "goalCarbon": "float",
+        "dayLimit": "int",
+        "allowedActionIds": "string[]"
+      },
+      "required": ["id", "title", "goalCarbon", "dayLimit", "allowedActionIds"]
+    },
+
+    "PlantDef": {
+      "file": "Assets/GameData/plants.json",
+      "root": "array",
+      "status": "provisional",
+      "item": {
+        "id": "string",
+        "displayName": "string",
+        "stageNames": "string[5]",
+        "stageThresholds": "int[4]",
+        "season": "spring|summer|autumn|winter|any",
+        "rarity": "common|rare|legendary",
+        "seedSource": "task|blindBox|exchange"
+      },
+      "required": ["id", "displayName", "stageNames", "stageThresholds"],
+      "example": {
+        "id": "sakura",
+        "displayName": "樱花",
+        "stageNames": ["种子", "幼苗", "小树", "成树", "盛放"],
+        "stageThresholds": [10, 40, 120, 300],
+        "season": "spring",
+        "rarity": "rare",
+        "seedSource": "blindBox"
+      },
+      "rule": "stageThresholds 是累计成长点门槛，必须递增；长度固定为 4（对应 5 个阶段）"
+    }
+  },
+  "tableRules": {
+    "unknownField": "校验失败，不许静默忽略",
+    "missingRequired": "校验失败，不许用默认值兜底",
+    "numbersAreAuthority": "数值只认 JSON，代码里禁止硬编码平衡数字"
+  },
+
+  "rules": {
+    "antiDuplicate": {
+      "rule": "同一 actionId 在同一 day 内只能计入一次",
+      "onViolation": "派发 OnRecordRejected(reason=duplicate)，两个账户都不许变",
+      "source": "《玩法与介绍》P6 数据可靠性边界：防重复"
+    },
+    "estimatedNotReal": {
+      "rule": "所有减排量是「估算值」，UI 文案必须用「估算」而不是「实际减少」",
+      "source": "《玩法与介绍》P6"
+    },
+    "virtualTreeDisclaimer": {
+      "rule": "虚拟树木不等于实际固碳，此声明必须能在结算页找到",
+      "source": "《玩法与介绍》P7"
+    }
+  },
+
+  "ui": {
+    "resolution": {
+      "status": "pending-platform",
+      "reference": "TBD：竖屏 1080x1920（参考图是手机竖屏）或 横屏 1920x1080（PC）",
+      "note": "平台确认前，UI 方案按竖屏出草稿；不要把锚点数值写死。",
+      "matchWidthOrHeight": 0.5
+    },
+    "hud": {
+      "elementIds": [
+        "carbonTotal",
+        "growthPoints",
+        "goalProgress",
+        "dayValue",
+        "actionList",
+        "calcPanel",
+        "plantStage",
+        "hintBanner"
+      ],
+      "rule": "carbonTotal 与 growthPoints 必须在不同容器内、不同视觉权重，不得相邻等大并排——否则玩家会把两个数加在一起"
+    },
+    "calcPanel": {
+      "elementIds": [
+        "baselineLabel",
+        "quantityValue",
+        "factorValue",
+        "actualLabel",
+        "carbonDeltaValue",
+        "sourceNote"
+      ],
+      "rule": "「计算情景」是核心界面而非提示框：必须同时显示基准 / 数量 / 因子 / 替代方式 / 结果 / 来源"
+    },
+    "palette": {
+      "status": "design-owned",
+      "note": "色值由设计在 30_Art/palette.md 给出，键名为 lowerCamelCase，工程端照抄不进代码"
+    }
+  }
+}
