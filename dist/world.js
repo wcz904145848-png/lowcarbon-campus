@@ -1,4 +1,4 @@
-/* 星露谷式行走引擎：3/4 俯视、镜头跟随、摇杆/键盘、碰撞滑动
+﻿/* 星露谷式行走引擎：3/4 俯视、镜头跟随、摇杆/键盘、碰撞滑动
    坐标系：世界坐标 = 原图 1392×1130 像素；渲染时统一乘 V 放大 */
 (function () {
   const MAP_W = 1392, MAP_H = 1130;
@@ -85,7 +85,7 @@
   }
 
   function init() {
-    mapImg = load("assets/world_map.png?v=5");
+    mapImg = load("assets/world_map.webp?v=5");
     collImg = load("assets/collide.png?v=5");
     IMG.sheet = load("assets/hero4.webp?v=6");
     collImg.onload = function () {

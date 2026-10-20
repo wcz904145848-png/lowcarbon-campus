@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -10,6 +10,29 @@
 </head>
 <body>
   <script>window.onerror=function(m,s,l){var d=document.createElement("pre");d.style.cssText="position:fixed;z-index:99999;left:0;top:0;right:0;background:#fff;color:#c00;font-size:22px;padding:20px;white-space:pre-wrap";d.textContent="ERR: "+m+"  @"+l;document.body.appendChild(d);};</script>
+  <script>
+    // 资源加载失败提示：任何 img/script/link 拉不到时，底部红条列出具体路径
+    window.__assetFail = [];
+    window.addEventListener("error", function (e) {
+      var t = e.target;
+      if (!t || !t.tagName) return;
+      var tag = t.tagName;
+      if (tag !== "IMG" && tag !== "SCRIPT" && tag !== "LINK") return;
+      var src = t.src || t.href || "";
+      if (src.indexOf("data:") === 0) return;
+      window.__assetFail.push(src.split("/").slice(-2).join("/"));
+      var d = document.getElementById("assetfail");
+      if (!d) {
+        d = document.createElement("div");
+        d.id = "assetfail";
+        d.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#B7332C;color:#fff;" +
+          "font:18px/1.45 ui-monospace,monospace;padding:10px 14px;max-height:26%;overflow:auto;word-break:break-all";
+        document.body.appendChild(d);
+      }
+      d.textContent = "资源加载失败 " + window.__assetFail.length + " 个：" +
+        window.__assetFail.slice(-4).join("  |  ");
+    }, true);
+  </script>
   <div id="stage">
     <div id="app"></div>
     <div id="toast" class="toast"></div>
