@@ -1,0 +1,7 @@
+# Cloudflare Workers 静态资源部署配置
+# 说明：本项目是纯静态站点，构建产物在 dist/
+name = "lowcarbon-campus"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./dist"
