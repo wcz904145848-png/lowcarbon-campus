@@ -1,4 +1,4 @@
-﻿/* 星露谷式行走引擎：3/4 俯视、镜头跟随、摇杆/键盘、碰撞滑动
+/* 星露谷式行走引擎：3/4 俯视、镜头跟随、摇杆/键盘、碰撞滑动
    坐标系：世界坐标 = 原图 1392×1130 像素；渲染时统一乘 V 放大 */
 (function () {
   const MAP_W = 1392, MAP_H = 1130;
@@ -26,7 +26,7 @@
   let wantSelfTest = false;
   let selfTest = null;
 
-  const P = { x: 720, y: 470, dirIdx: 2, moving: false, t: 0, anim: 0, target: null, path: null, stall: 0 };
+  const P = { x: 720, y: 470, dirIdx: 2, dir4: 0, moving: false, t: 0, anim: 0, target: null, path: null, stall: 0 };
 
   const DOORS = [
     { id: "canteen", x: 164, y: 504, label: "三食堂", kind: "loc", loc: "食堂" },
@@ -85,9 +85,9 @@
   }
 
   function init() {
-    mapImg = load("assets/world_map.webp?v=5");
+    mapImg = load("assets/world_map.png?v=5");
     collImg = load("assets/collide.png?v=5");
-    IMG.sheet = load("assets/hero8.webp?v=5");
+    IMG.sheet = load("assets/hero4.webp?v=6");
     collImg.onload = function () {
       const c = document.createElement("canvas");
       c.width = collImg.naturalWidth; c.height = collImg.naturalHeight;
@@ -371,6 +371,8 @@
     let ang = Math.atan2(iy, ix);
     if (ang < 0) ang += Math.PI * 2;
     P.dirIdx = Math.round(ang / (Math.PI / 4)) % 8;
+    // 四方向贴图：0=下 1=左 2=右 3=上（对角取主轴）
+    P.dir4 = Math.abs(ix) > Math.abs(iy) ? (ix > 0 ? 2 : 1) : (iy > 0 ? 0 : 3);
     P.t += dt;
     P.anim += dt;
   }
@@ -488,14 +490,14 @@
     ctx.fill();
     ctx.restore();
 
-    const CELL = 160, FOOT = 156;
-    const frame = P.moving ? (Math.floor(P.anim * 11) % 8) : 0;
+    // 四方向 × 8 帧（224×320 单元格，脚下对齐 py）
+    const SW = 224, SH = 320, SC = 0.55;
+    const frame = P.moving ? (Math.floor(P.anim * 10) % 8) : 0;
     if (IMG.sheet && IMG.sheet.complete && IMG.sheet.naturalWidth) {
-      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(IMG.sheet,
-        frame * CELL, P.dirIdx * CELL, CELL, CELL,
-        Math.round(px - CELL / 2), Math.round(py - FOOT), CELL, CELL);
-      ctx.imageSmoothingEnabled = true;
+        frame * SW, P.dir4 * SH, SW, SH,
+        Math.round(px - 111.5 * SC), Math.round(py - 304 * SC),
+        Math.round(SW * SC), Math.round(SH * SC));
     }
 
     // 规划出的路线

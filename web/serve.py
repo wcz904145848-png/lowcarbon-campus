@@ -5,10 +5,15 @@
      绑定 0.0.0.0，同一 Wi-Fi 下的手机可以直接打开
 """
 import http.server
+import mimetypes
 import os
 import socket
 import socketserver
 import sys
+
+# Python 内置表里没有 webp，不补的话会发成 application/octet-stream，
+# Canvas 的 drawImage 会直接抛 "broken state" 异常。
+mimetypes.add_type("image/webp", ".webp")
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8791
